@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -27,8 +28,15 @@ func main() {
 	// MCPサーバーを作成
 	server := mcp.NewServer(&mcp.Implementation{Name: "greeter", Version: "v1.0.0"}, nil)
 	mcp.AddTool(server, &mcp.Tool{Name: "greet", Description: "say hi"}, SayHi)
-	// サーバーを起動し、クライアントが接続を切るまで待機
-	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
+
+	// HTTPハンドラーを介してMCPリクエストを処理
+	handler := mcp.NewStreamableHTTPHandler(func(r *http.Request) *mcp.Server {
+		return server
+	}, nil)
+
+	const addr = ":8080"
+	log.Printf("MCP HTTP server listening on %s", addr)
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal(err)
 	}
 }
